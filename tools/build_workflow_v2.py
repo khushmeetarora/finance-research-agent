@@ -1,0 +1,718 @@
+"""Build the polished v2 workflow document: WORKFLOW_v2.html (+ .pdf).
+
+This is the reproducible source for the upgraded, beginner-friendly workflow
+document. It assembles a single **self-contained HTML file** (inline CSS, inline
+SVG diagrams, web fonts with a system fallback) and then prints it to **PDF**
+with Playwright (headless Chromium).
+
+Design rationale and styling guidelines live in ``tools/DESIGN_NOTES.md``.
+
+Run:    python tools/build_workflow_v2.py
+Output: WORKFLOW_v2.html and WORKFLOW_v2.pdf at the repository root.
+
+The existing WORKFLOW.md / WORKFLOW.docx are intentionally left untouched.
+If Playwright/Chromium is unavailable, the HTML is still written and the PDF
+step is skipped with a notice (the HTML prints cleanly to PDF from any browser).
+"""
+from __future__ import annotations
+
+import os
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HTML_PATH = os.path.join(REPO, "WORKFLOW_v2.html")
+PDF_PATH = os.path.join(REPO, "WORKFLOW_v2.pdf")
+
+
+# ==========================================================================
+# Inline SVG diagrams (crisp at any zoom; carry text labels, not colour-only)
+# ==========================================================================
+ARCH_SVG = r"""
+<svg viewBox="0 0 1000 700" role="img" aria-label="Architecture diagram: your command flows through the CLI and orchestrator into a pipeline of agents, then out to reports; external data, an LLM provider and profile files feed in." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+      <path d="M0,0 L7,3.2 L0,6.4 z" fill="#3A5566"/>
+    </marker>
+    <marker id="ahd" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+      <path d="M0,0 L7,3.2 L0,6.4 z" fill="#7C6BA0"/>
+    </marker>
+    <linearGradient id="pipeBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2FAFB"/><stop offset="1" stop-color="#E8F4F5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- top row -->
+  <g font-family="Inter, sans-serif" font-size="15" font-weight="600">
+    <rect x="30" y="28" width="180" height="58" rx="12" fill="#E9A23B"/>
+    <text x="120" y="52" text-anchor="middle" fill="#0F2E3D">You</text>
+    <text x="120" y="72" text-anchor="middle" fill="#0F2E3D" font-size="12" font-weight="500">a typed command</text>
+
+    <rect x="300" y="28" width="200" height="58" rx="12" fill="#1B6B7A"/>
+    <text x="400" y="52" text-anchor="middle" fill="#fff">The front desk</text>
+    <text x="400" y="72" text-anchor="middle" fill="#CFE8EC" font-size="11" font-weight="500">src/cli.py</text>
+
+    <rect x="590" y="28" width="230" height="58" rx="12" fill="#0F4C5C"/>
+    <text x="705" y="52" text-anchor="middle" fill="#fff">The conveyor belt</text>
+    <text x="705" y="72" text-anchor="middle" fill="#CFE8EC" font-size="11" font-weight="500">graph/orchestrator.py</text>
+
+    <line x1="210" y1="57" x2="296" y2="57" stroke="#3A5566" stroke-width="2.2" marker-end="url(#ah)"/>
+    <line x1="500" y1="57" x2="586" y2="57" stroke="#3A5566" stroke-width="2.2" marker-end="url(#ah)"/>
+  </g>
+
+  <!-- pipeline container -->
+  <rect x="30" y="120" width="560" height="520" rx="18" fill="url(#pipeBg)" stroke="#0F4C5C" stroke-width="1.5"/>
+  <text x="60" y="150" font-family="Fraunces, serif" font-size="18" font-weight="600" fill="#0F4C5C">The pipeline of helpers</text>
+
+  <g font-family="Inter, sans-serif" font-size="13.5" font-weight="600">
+    <!-- 9 stage boxes -->
+    <rect x="90" y="168" width="440" height="40" rx="9" fill="#2A9D8F"/><text x="310" y="193" text-anchor="middle" fill="#fff">1 &#183; Librarian &#8212; build the candidate list</text>
+    <rect x="90" y="218" width="440" height="40" rx="9" fill="#2A9D8F"/><text x="310" y="243" text-anchor="middle" fill="#fff">2 &#183; Calculator robot &#8212; fetch data &amp; score</text>
+    <rect x="90" y="268" width="440" height="40" rx="9" fill="#1B6B7A"/><text x="310" y="293" text-anchor="middle" fill="#fff">3 &#183; Four AI analysts &#8212; explain the scores</text>
+    <rect x="90" y="318" width="440" height="40" rx="9" fill="#1B6B7A"/><text x="310" y="343" text-anchor="middle" fill="#fff">4 &#183; Bull vs Bear &#8212; a short debate</text>
+    <rect x="90" y="368" width="440" height="40" rx="9" fill="#2A9D8F"/><text x="310" y="393" text-anchor="middle" fill="#fff">5 &#183; Risk &amp; tax checker</text>
+    <rect x="90" y="418" width="440" height="40" rx="9" fill="#0F4C5C"/><text x="310" y="443" text-anchor="middle" fill="#fff">6 &#183; Manager &#8212; final ranked picks</text>
+    <rect x="90" y="468" width="440" height="40" rx="9" fill="#0F4C5C"/><text x="310" y="493" text-anchor="middle" fill="#fff">7 &#183; Report writer (Markdown + Excel)</text>
+    <rect x="90" y="518" width="440" height="40" rx="9" fill="#1B6B7A"/><text x="310" y="543" text-anchor="middle" fill="#fff">8 &#183; Memory log (history)</text>
+    <g stroke="#0F4C5C" stroke-width="1.8" marker-end="url(#ah)">
+      <line x1="310" y1="208" x2="310" y2="216"/>
+      <line x1="310" y1="258" x2="310" y2="266"/>
+      <line x1="310" y1="308" x2="310" y2="316"/>
+      <line x1="310" y1="358" x2="310" y2="366"/>
+      <line x1="310" y1="408" x2="310" y2="416"/>
+      <line x1="310" y1="458" x2="310" y2="466"/>
+      <line x1="310" y1="508" x2="310" y2="516"/>
+    </g>
+    <text x="310" y="600" text-anchor="middle" font-size="12" font-weight="500" fill="#3A5566">Each helper hands its work to the next, like a relay.</text>
+  </g>
+  <line x1="700" y1="86" x2="560" y2="164" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#ah)"/>
+
+  <!-- right column outputs -->
+  <g font-family="Inter, sans-serif" font-size="13.5" font-weight="600">
+    <rect x="650" y="430" width="320" height="50" rx="11" fill="#0F4C5C"/><text x="810" y="460" text-anchor="middle" fill="#fff">Report writer &#183; report/generator.py</text>
+    <rect x="650" y="498" width="320" height="50" rx="11" fill="#1B6B7A"/><text x="810" y="528" text-anchor="middle" fill="#fff">Memory log &#183; memory/store.py</text>
+    <rect x="650" y="566" width="320" height="56" rx="11" fill="#E9A23B"/>
+    <text x="810" y="590" text-anchor="middle" fill="#0F2E3D">What you receive</text>
+    <text x="810" y="610" text-anchor="middle" fill="#0F2E3D" font-size="11.5" font-weight="500">reports/*.md  +  *.xlsx</text>
+    <line x1="540" y1="438" x2="646" y2="450" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#ah)"/>
+    <line x1="810" y1="480" x2="810" y2="494" stroke="#0F4C5C" stroke-width="2" marker-end="url(#ah)"/>
+    <line x1="810" y1="548" x2="810" y2="562" stroke="#0F4C5C" stroke-width="2" marker-end="url(#ah)"/>
+  </g>
+
+  <!-- external feeders -->
+  <g font-family="Inter, sans-serif" font-size="12.5" font-weight="600">
+    <rect x="650" y="150" width="320" height="74" rx="11" fill="#7C6BA0"/>
+    <text x="810" y="178" text-anchor="middle" fill="#fff">Free data sources</text>
+    <text x="810" y="200" text-anchor="middle" fill="#EDE7F5" font-size="11" font-weight="500">yfinance &#183; Stooq</text>
+    <text x="810" y="216" text-anchor="middle" fill="#EDE7F5" font-size="11" font-weight="500">GDELT &#183; SEC EDGAR</text>
+
+    <rect x="650" y="248" width="320" height="74" rx="11" fill="#5B7DB1"/>
+    <text x="810" y="276" text-anchor="middle" fill="#fff">AI provider (the "analysts")</text>
+    <text x="810" y="298" text-anchor="middle" fill="#E4ECF6" font-size="11" font-weight="500">OpenAI &#183; Anthropic</text>
+    <text x="810" y="314" text-anchor="middle" fill="#E4ECF6" font-size="11" font-weight="500">Ollama &#183; offline stub</text>
+
+    <rect x="650" y="346" width="320" height="64" rx="11" fill="#9C8FB8"/>
+    <text x="810" y="372" text-anchor="middle" fill="#0F2E3D">Your settings file</text>
+    <text x="810" y="392" text-anchor="middle" fill="#0F2E3D" font-size="11" font-weight="500">config/profiles/*.yaml</text>
+
+    <line x1="648" y1="200" x2="534" y2="232" stroke="#7C6BA0" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ahd)"/>
+    <line x1="648" y1="284" x2="534" y2="300" stroke="#7C6BA0" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#ahd)"/>
+  </g>
+
+  <!-- legend -->
+  <g font-family="Inter, sans-serif" font-size="12">
+    <rect x="30" y="656" width="14" height="14" rx="3" fill="#7C6BA0"/><text x="50" y="667" fill="#0F2E3D">Get data</text>
+    <rect x="150" y="656" width="14" height="14" rx="3" fill="#2A9D8F"/><text x="170" y="667" fill="#0F2E3D">Pure math (no AI)</text>
+    <rect x="330" y="656" width="14" height="14" rx="3" fill="#1B6B7A"/><text x="350" y="667" fill="#0F2E3D">AI interpretation</text>
+    <rect x="520" y="656" width="14" height="14" rx="3" fill="#0F4C5C"/><text x="540" y="667" fill="#0F2E3D">Write the output</text>
+  </g>
+</svg>
+"""
+
+FLOW_SVG = r"""
+<svg viewBox="0 0 1000 560" role="img" aria-label="Stage-by-stage flow: command, librarian, calculator; then a decision point splits into the AI path (analysts and debate) or the no-AI shortcut; both rejoin for risk, manager, report and memory." xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="fa" markerWidth="9" markerHeight="9" refX="7" refY="3.2" orient="auto">
+      <path d="M0,0 L7,3.2 L0,6.4 z" fill="#0F4C5C"/>
+    </marker>
+  </defs>
+  <g font-family="Inter, sans-serif" font-weight="600">
+    <!-- top chain -->
+    <rect x="40" y="40" width="250" height="52" rx="11" fill="#E9A23B"/><text x="165" y="72" text-anchor="middle" font-size="14" fill="#0F2E3D">0 &#183; You run a command</text>
+    <rect x="375" y="40" width="250" height="52" rx="11" fill="#2A9D8F"/><text x="500" y="72" text-anchor="middle" font-size="14" fill="#fff">1 &#183; Librarian picks names</text>
+    <rect x="710" y="40" width="250" height="52" rx="11" fill="#0F4C5C"/><text x="835" y="72" text-anchor="middle" font-size="14" fill="#fff">2 &#183; Calculator scores them</text>
+    <line x1="290" y1="66" x2="371" y2="66" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#fa)"/>
+    <line x1="625" y1="66" x2="706" y2="66" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#fa)"/>
+
+    <!-- decision -->
+    <polygon points="835,120 955,168 835,216 715,168" fill="#FBEFD9" stroke="#E9A23B" stroke-width="2"/>
+    <text x="835" y="164" text-anchor="middle" font-size="13" fill="#0F2E3D">Use AI?</text>
+    <text x="835" y="184" text-anchor="middle" font-size="10.5" font-weight="500" fill="#7a5a1e">should_run_llm</text>
+    <line x1="835" y1="92" x2="835" y2="118" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#fa)"/>
+
+    <!-- AI path (left) -->
+    <text x="600" y="150" text-anchor="middle" font-size="11.5" fill="#2A9D8F" font-weight="700">Yes &#8212; LLM on</text>
+    <rect x="470" y="250" width="260" height="48" rx="11" fill="#1B6B7A"/><text x="600" y="280" text-anchor="middle" font-size="13.5" fill="#fff">3 &#183; Four AI analysts</text>
+    <rect x="470" y="316" width="260" height="48" rx="11" fill="#1B6B7A"/><text x="600" y="346" text-anchor="middle" font-size="13.5" fill="#fff">4 &#183; Bull vs Bear debate</text>
+    <path d="M740,185 C660,215 620,225 600,248" fill="none" stroke="#2A9D8F" stroke-width="2.2" marker-end="url(#fa)"/>
+    <line x1="600" y1="298" x2="600" y2="314" stroke="#0F4C5C" stroke-width="2" marker-end="url(#fa)"/>
+
+    <!-- no-AI shortcut (right) -->
+    <text x="900" y="244" text-anchor="middle" font-size="11.5" fill="#b9801e" font-weight="700">No &#8212; shortcut</text>
+    <rect x="780" y="260" width="200" height="64" rx="11" fill="#9C8FB8"/>
+    <text x="880" y="286" text-anchor="middle" font-size="12.5" fill="#0F2E3D">Skip straight to</text>
+    <text x="880" y="304" text-anchor="middle" font-size="11.5" font-weight="500" fill="#0F2E3D">manager (math only)</text>
+    <path d="M900,210 C915,228 905,240 890,258" fill="none" stroke="#b9801e" stroke-width="2.2" marker-end="url(#fa)"/>
+
+    <!-- merge into 5..8 -->
+    <rect x="40" y="400" width="220" height="48" rx="11" fill="#2A9D8F"/><text x="150" y="430" text-anchor="middle" font-size="13" fill="#fff">5 &#183; Risk &amp; tax</text>
+    <rect x="300" y="400" width="220" height="48" rx="11" fill="#0F4C5C"/><text x="410" y="430" text-anchor="middle" font-size="13" fill="#fff">6 &#183; Manager picks</text>
+    <rect x="560" y="400" width="220" height="48" rx="11" fill="#0F4C5C"/><text x="670" y="430" text-anchor="middle" font-size="13" fill="#fff">7 &#183; Report</text>
+    <rect x="820" y="400" width="140" height="48" rx="11" fill="#1B6B7A"/><text x="890" y="430" text-anchor="middle" font-size="13" fill="#fff">8 &#183; Memory</text>
+
+    <path d="M600,364 C500,392 360,388 270,420" fill="none" stroke="#1B6B7A" stroke-width="2.2" marker-end="url(#fa)"/>
+    <path d="M880,324 C760,360 360,372 262,420" fill="none" stroke="#9C8FB8" stroke-width="2.2" marker-end="url(#fa)"/>
+    <line x1="260" y1="424" x2="296" y2="424" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#fa)"/>
+    <line x1="520" y1="424" x2="556" y2="424" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#fa)"/>
+    <line x1="780" y1="424" x2="816" y2="424" stroke="#0F4C5C" stroke-width="2.2" marker-end="url(#fa)"/>
+  </g>
+  <text x="500" y="510" text-anchor="middle" font-family="Inter, sans-serif" font-size="12.5" font-weight="500" fill="#3A5566">Both paths end the same way: a written report saved to disk, plus a line in the history log.</text>
+</svg>
+"""
+
+
+# ==========================================================================
+# CSS
+# ==========================================================================
+CSS = r"""
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root{
+  --ink:#0F2E3D; --primary:#0F4C5C; --secondary:#1B6B7A; --accent:#2A9D8F;
+  --gold:#E9A23B; --mint:#DCF0EC; --lightblue:#E8F1F2; --sand:#FBEFD9;
+  --page:#EEF4F5; --card:#ffffff; --muted:#5a7480; --line:#D6E4E7;
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;
+  --sans:'Inter',-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:'JetBrains Mono','Cascadia Code',Consolas,monospace;
+}
+*{box-sizing:border-box;}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{margin:0;background:var(--page);font-family:var(--sans);color:var(--ink);
+  font-size:15px;line-height:1.6;}
+
+.page{position:relative;width:210mm;min-height:296mm;margin:14px auto;background:var(--card);
+  padding:24mm 20mm 20mm;box-shadow:0 8px 30px rgba(15,46,61,.12);}
+@media print{
+  body{background:#fff;}
+  .page{margin:0;box-shadow:none;width:auto;min-height:auto;padding:0 2mm;
+    page-break-after:always;}
+  .page:last-child{page-break-after:auto;}
+}
+
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.18;color:var(--primary);
+  letter-spacing:-.01em;}
+h1{font-size:30px;margin:0 0 6px;}
+h2{font-size:23px;color:var(--secondary);margin:34px 0 10px;
+  padding-bottom:7px;border-bottom:2px solid var(--line);}
+h3{font-size:17.5px;color:var(--accent);margin:20px 0 6px;}
+p{margin:0 0 11px;}
+a{color:var(--secondary);}
+strong{color:var(--primary);font-weight:600;}
+.kicker{font-family:var(--sans);font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  font-size:11px;color:var(--accent);margin:0 0 4px;}
+code,.mono{font-family:var(--mono);font-size:.88em;background:#EAF3F4;color:var(--primary);
+  padding:1px 6px;border-radius:5px;}
+ul,ol{margin:0 0 12px;padding-left:22px;}
+li{margin:4px 0;}
+
+/* ---- cover ---- */
+.cover{display:flex;flex-direction:column;justify-content:flex-start;}
+.masthead{background:linear-gradient(135deg,#0F4C5C 0%,#1B6B7A 55%,#2A9D8F 120%);
+  color:#fff;border-radius:18px;padding:42px 38px;margin-top:6mm;
+  box-shadow:0 14px 40px rgba(15,76,92,.28);}
+.masthead .eyebrow{font-weight:700;letter-spacing:.22em;text-transform:uppercase;
+  font-size:12px;color:#BFEBE3;margin-bottom:14px;}
+.masthead h1{color:#fff;font-size:46px;line-height:1.05;margin:0;}
+.masthead .sub{font-size:18px;color:#D8F0EC;margin-top:14px;font-family:var(--sans);
+  font-weight:400;line-height:1.5;}
+.cover-meta{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;}
+.chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);
+  border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;color:#EAF7F4;}
+.cover-lead{font-family:var(--serif);font-size:21px;line-height:1.5;color:var(--primary);
+  margin:30px 4px 6px;font-weight:400;}
+.cover-lead .hl{background:linear-gradient(transparent 62%,#FCE6BE 62%);}
+.byline{margin:24px 4px 0;color:var(--muted);font-size:13px;}
+
+/* ---- callouts ---- */
+.callout{display:flex;gap:13px;border-radius:12px;padding:15px 17px;margin:16px 0;
+  border:1px solid var(--line);page-break-inside:avoid;}
+.callout .ico{flex:0 0 30px;width:30px;height:30px;border-radius:8px;display:flex;
+  align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;}
+.callout .body{flex:1;}
+.callout .tt{font-weight:700;font-size:13.5px;margin-bottom:3px;letter-spacing:.02em;}
+.callout p{margin:0;font-size:14px;}
+.c-plain{background:var(--lightblue);border-color:#BCD8DD;}
+.c-plain .ico{background:var(--secondary);} .c-plain .tt{color:var(--secondary);}
+.c-analogy{background:var(--mint);border-color:#AEDDD3;}
+.c-analogy .ico{background:var(--accent);} .c-analogy .tt{color:#1c8273;}
+.c-warn{background:var(--sand);border-color:#EFD6A6;}
+.c-warn .ico{background:var(--gold);color:#3a2a08;} .c-warn .tt{color:#b9801e;}
+.c-tip{background:#E6F3EC;border-color:#BCE0C9;}
+.c-tip .ico{background:#3FA66A;} .c-tip .tt{color:#2f8050;}
+
+/* ---- ELI5 step list ---- */
+.steps{counter-reset:s;margin:14px 0;padding:0;list-style:none;}
+.steps li{counter-increment:s;position:relative;padding:10px 4px 10px 52px;
+  border-bottom:1px dashed var(--line);}
+.steps li:last-child{border-bottom:none;}
+.steps li::before{content:counter(s);position:absolute;left:0;top:9px;width:34px;height:34px;
+  background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-family:var(--serif);font-size:16px;}
+
+/* ---- glossary cards ---- */
+.gloss{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0;}
+.gcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;
+  border-top:4px solid var(--accent);page-break-inside:avoid;}
+.gcard .term{font-weight:700;color:var(--primary);font-size:14.5px;display:flex;
+  align-items:center;gap:8px;}
+.gcard .term .e{font-size:17px;}
+.gcard .mean{font-size:13px;margin:5px 0 0;color:var(--ink);}
+.gcard .like{font-size:12px;margin:6px 0 0;color:var(--muted);font-style:italic;}
+
+/* ---- stage blocks ---- */
+.stage{display:flex;gap:16px;margin:16px 0;padding:15px;border:1px solid var(--line);
+  border-radius:14px;background:#fff;page-break-inside:avoid;}
+.stage .num{flex:0 0 46px;height:46px;border-radius:12px;background:var(--primary);color:#fff;
+  font-family:var(--serif);font-weight:700;font-size:22px;display:flex;align-items:center;
+  justify-content:center;}
+.stage.math .num{background:var(--accent);}
+.stage.ai .num{background:var(--secondary);}
+.stage.io .num{background:var(--gold);color:#3a2a08;}
+.stage .sbody{flex:1;}
+.stage h3{margin:0 0 4px;color:var(--primary);}
+.stage .real{font-size:12px;color:var(--muted);margin-top:7px;}
+.stage .real code{font-size:11.5px;}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:2px 8px;border-radius:6px;margin-left:8px;vertical-align:middle;}
+.tag.t-math{background:var(--mint);color:#1c8273;}
+.tag.t-ai{background:#E2EEF7;color:#365f86;}
+.tag.t-io{background:var(--sand);color:#b9801e;}
+
+/* ---- tables ---- */
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;
+  page-break-inside:avoid;}
+th{background:var(--primary);color:#fff;text-align:left;padding:9px 11px;font-weight:600;}
+td{padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top;}
+tr:nth-child(even) td{background:#F3F8F9;}
+td code{font-size:12px;}
+
+/* ---- figure ---- */
+figure{margin:16px 0;background:#fff;border:1px solid var(--line);border-radius:14px;
+  padding:16px;page-break-inside:avoid;}
+figure svg{width:100%;height:auto;display:block;}
+figcaption{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;font-style:italic;}
+
+/* ---- code block ---- */
+pre{background:#0F2E3D;color:#D8EEF0;border-radius:12px;padding:15px 17px;overflow:auto;
+  font-family:var(--mono);font-size:12.5px;line-height:1.55;margin:14px 0;
+  page-break-inside:avoid;}
+pre .cm{color:#7FB6A9;}
+pre code{background:none;color:inherit;padding:0;}
+
+.lead{font-size:16.5px;color:var(--ink);}
+.divider{height:1px;background:var(--line);margin:26px 0;border:none;}
+.layer-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:14px 0;}
+.layer{border-radius:12px;padding:13px 15px;color:#fff;page-break-inside:avoid;}
+.layer h4{margin:0 0 5px;font-family:var(--serif);font-size:15px;}
+.layer p{font-size:12.5px;margin:0;opacity:.95;}
+.l1{background:#7C6BA0;} .l2{background:var(--accent);} .l3{background:var(--primary);}
+.footernote{font-size:12px;color:var(--muted);border-top:1px solid var(--line);
+  margin-top:26px;padding-top:12px;}
+"""
+
+
+# ==========================================================================
+# Small HTML builders
+# ==========================================================================
+def callout(kind, icon, title, html):
+    cls = {"plain": "c-plain", "analogy": "c-analogy", "warn": "c-warn", "tip": "c-tip"}[kind]
+    return (f'<div class="callout {cls}"><div class="ico">{icon}</div>'
+            f'<div class="body"><div class="tt">{title}</div><p>{html}</p></div></div>')
+
+
+def gcard(emoji, term, meaning, like):
+    return (f'<div class="gcard"><div class="term"><span class="e">{emoji}</span>{term}</div>'
+            f'<p class="mean">{meaning}</p><p class="like">{like}</p></div>')
+
+
+def stage(num, kind, tag_label, tag_cls, title, body_html, real_html):
+    return (f'<div class="stage {kind}"><div class="num">{num}</div>'
+            f'<div class="sbody"><h3>{title}<span class="tag {tag_cls}">{tag_label}</span></h3>'
+            f'{body_html}<p class="real">{real_html}</p></div></div>')
+
+
+# ==========================================================================
+# Content
+# ==========================================================================
+def build_html():
+    glossary = [
+        ("&#128187;", "CLI (command-line interface)",
+         "A program you drive by typing a command instead of clicking buttons.",
+         "Like texting an order to the kitchen instead of pointing at a menu."),
+        ("&#127991;&#65039;", "Ticker",
+         "A stock's short code, e.g. <code>INFY.NS</code> (Infosys) or <code>SAP.DE</code> (SAP).",
+         "Like a phone contact's short name."),
+        ("&#127758;", "Universe",
+         "The full pool of candidate companies before the list is narrowed down.",
+         "The whole bookshelf, before you pick a few books."),
+        ("&#129489;&#8205;&#128188;", "Profile",
+         "A saved set of preferences (country, currency, tax, risk appetite).",
+         "Your saved coffee order the barista already knows."),
+        ("&#128202;", "Factor",
+         "A measurable quality of a company. FRA uses five: Quality, Value, Momentum, Financial Health, Earnings Quality.",
+         "Like grading a car on safety, mileage, price, looks and reliability."),
+        ("&#129518;", "Composite score",
+         "One number from 0 to 1 that blends the five factors using your chosen weights. Higher ranks better.",
+         "A single star-rating made from several sub-scores."),
+        ("&#128207;", "Percentile rank",
+         "\u201cBetter than X% of the others\u201d &mdash; scored against peers, not an absolute bar.",
+         "A class rank, not a fixed exam pass-mark."),
+        ("&#129302;", "LLM (large language model)",
+         "An AI that reads and writes text (GPT, Claude, or a local Llama). Here it plays \u201canalyst.\u201d",
+         "A very well-read intern who can summarise, but mustn't invent figures."),
+        ("&#128737;&#65039;", "Data health card",
+         "A traffic-light (OK / WARN / CRITICAL) showing how complete and trustworthy this run's data was.",
+         "The freshness sticker on a carton of milk."),
+        ("&#128202;", "Coverage",
+         "How much of the expected data actually showed up. Low coverage \u2192 the score is nudged toward neutral.",
+         "A half-filled form: you trust its conclusions less."),
+        ("&#129516;", "Snapshot",
+         "A tidy bundle of one company's numbers (price, margins, debt, momentum&hellip;).",
+         "A nutrition label for a stock."),
+        ("&#9878;&#65039;", "Bull vs Bear",
+         "Two AIs argue the optimistic (Bull) vs cautious (Bear) case so you see both sides.",
+         "A friendly courtroom: prosecution and defence."),
+    ]
+    gloss_html = '<div class="gloss">' + "".join(
+        gcard(e, t, m, l) for e, t, m, l in glossary) + "</div>"
+
+    stage_rows = [
+        ("0", "io", "You", "t-io", "You run a command",
+         "You type a request in the terminal &mdash; which profile to use, what to research, how many picks you want.",
+         "Handled by <code>research()</code> in <code>src/cli.py</code>; it packs everything into a shared <code>AgentState</code>."),
+        ("1", "math", "No AI", "t-math", "The librarian builds the candidate list",
+         "It works out whether you typed one company or a theme (\u201cbest banks in India\u201d), spots the sector from keywords, and pulls the matching companies. Live lists first, built-in lists as backup. <strong>No AI &mdash; just rules.</strong>",
+         "<code>src/agents/universe.py</code> &rarr; produces <code>candidate_tickers</code>."),
+        ("2", "math", "No AI", "t-math", "The calculator robot fetches data &amp; scores everyone",
+         "The heart of the whole thing. It downloads a <strong>snapshot</strong> for each company (cross-checking the price against a second free source), builds the <strong>data health card</strong>, then scores every company on the five factors and blends them into one <strong>composite score</strong>. Companies with thin data get pulled toward neutral so a lucky gap can't fake a high score.",
+         "<code>src/agents/quant.py</code> + the factor engine in <code>src/factors/engine.py</code> &rarr; <code>shortlist</code>, <code>data_health</code>, a reproducible <code>input_hash</code>."),
+        ("3", "ai", "AI", "t-ai", "Four AI analysts explain the numbers",
+         "Now the AI joins &mdash; but on a tight leash. Four analysts (<strong>fundamentals, technical, news, macro</strong>) read the scores and write short, plain opinions. Each is <strong>forbidden from inventing numbers</strong> and must cite the metric behind every claim. No AI available? Each one falls back to a simple math rule.",
+         "<code>src/agents/fundamentals.py</code>, <code>technical.py</code>, <code>news_sentiment.py</code>, <code>macro.py</code> &rarr; <code>analyst_signals</code>."),
+        ("4", "ai", "AI", "t-ai", "Bull vs Bear hold a short debate",
+         "Two AI personas &mdash; an optimist and a sceptic &mdash; argue the 2&ndash;3 most interesting names, so the report shows both the upside and the worries.",
+         "<code>src/agents/researchers.py</code> &rarr; <code>debate</code> turns (repeat with <code>--rounds</code>)."),
+        ("5", "math", "No AI", "t-math", "The risk &amp; tax checker adds your rules",
+         "Applies <em>your</em> profile rules: a cap on how much any single name can take, volatility filters, ETF preference, and tax notes (Indian capital-gains, or German Abgeltungssteuer) copied straight from your settings file.",
+         "<code>src/agents/risk_profile.py</code> &rarr; <code>risk_notes</code>, <code>tax_notes</code>."),
+        ("6", "io", "Mixed", "t-io", "The manager makes the final ranked picks",
+         "Combines the scores, the analyst notes and the debate into a final ranked list. Each pick gets a 2&ndash;3 sentence reason (citing real metrics), key risks, a suggested holding time and an estimated <strong>after-tax</strong> return. Forgotten a shortlisted name? It's quietly backfilled.",
+         "<code>src/agents/manager.py</code> (<code>run</code> / <code>run_quant_only</code>) &rarr; <code>picks</code>."),
+        ("7", "io", "Output", "t-io", "The report writer saves your document",
+         "Turns everything into a clean Markdown report (and, unless you opt out, a multi-sheet Excel workbook) saved into <code>reports/</code>.",
+         "<code>src/report/generator.py</code> &rarr; <code>report_path</code> (+ <code>excel_path</code>)."),
+        ("8", "ai", "Output", "t-io", "The memory log remembers the run",
+         "Appends a compact record of the run so the <code>history</code> command can list it later.",
+         "<code>src/memory/store.py</code> &rarr; a line in <code>.fra_memory/index.jsonl</code>."),
+    ]
+    stages_html = "".join(
+        stage(n, k, tl, tc, ti, f"<p>{b}</p>", r) for n, k, tl, tc, ti, b, r in stage_rows)
+
+    # ---- assemble ----
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance Research Agent &mdash; How It Works</title>
+<style>{CSS}</style></head>
+<body>
+
+<!-- ============ COVER ============ -->
+<section class="page cover">
+  <div class="masthead">
+    <div class="eyebrow">Beginner-friendly blueprint</div>
+    <h1>How the Finance<br>Research Agent Works</h1>
+    <div class="sub">From the moment you type a command, to the moment a tidy
+      research report lands on your disk &mdash; explained so <em>anyone</em> can follow.</div>
+    <div class="cover-meta">
+      <span class="chip">No jargon left unexplained</span>
+      <span class="chip">9 simple stages</span>
+      <span class="chip">Mapped to the real code</span>
+    </div>
+  </div>
+
+  <p class="cover-lead">Think of it as a <span class="hl">very careful research team</span>:
+  a librarian, a calculator robot, a panel of analysts, a quick debate, and a manager
+  &mdash; working in a relay to answer one question, <em>\u201cwhich stocks are worth a closer look?\u201d</em></p>
+
+  {callout("warn", "&#9888;", "Please read this first &mdash; straight from the project",
+           "This software produces <strong>educational / research output only</strong>. "
+           "It is <strong>not financial advice</strong>, it places <strong>no real orders</strong>, "
+           "and it uses <strong>free public data</strong> that may be stale or wrong. Always verify before acting.")}
+
+  <p class="byline">Generated June 19, 2026 &middot; a polished companion to <code>WORKFLOW.md</code>
+  &middot; built from HTML + CSS, printed to PDF via Chromium.</p>
+</section>
+
+<!-- ============ PAGE 1: ELI5 + Overview ============ -->
+<section class="page">
+  <p class="kicker">Start here</p>
+  <h1>0 &middot; The whole idea in 30 seconds</h1>
+  <p class="lead">Imagine you ask a careful research team:
+  <em>\u201cWhat are the best IT companies to invest in, in India?\u201d</em> Here's what happens behind the scenes:</p>
+
+  <ol class="steps">
+    <li><strong>A librarian</strong> figures out which companies you might mean and makes a list.</li>
+    <li><strong>A calculator robot</strong> downloads free public numbers (profits, debt, price trends) and scores each company &mdash; pure math, no opinions &mdash; plus a \u201chow trustworthy is this data?\u201d sticker.</li>
+    <li><strong>A panel of AI analysts</strong> reads those scores and writes short, evidence-based opinions. They <em>cannot</em> make up numbers.</li>
+    <li><strong>Two AIs debate</strong> &mdash; one optimistic \u201cBull,\u201d one cautious \u201cBear.\u201d</li>
+    <li><strong>A risk &amp; tax checker</strong> adds rules specific to you (e.g. local capital-gains tax, or \u201ckeep it low-risk for a student\u201d).</li>
+    <li><strong>A manager</strong> combines everything into a final ranked list and writes you a tidy report.</li>
+  </ol>
+
+  {callout("analogy", "&#128161;", "The one analogy to remember",
+           "The robot does the <strong>maths</strong>; the AI only does the <strong>talking</strong>. "
+           "Numbers always come from real data and formulas &mdash; the AI is never allowed to invent a figure. "
+           "That's what makes the output more trustworthy than asking a chatbot to \u201cjust pick stocks.\u201d")}
+
+  <h2>1 &middot; What this project actually is</h2>
+  <p>The <strong>Finance Research Agent (FRA)</strong> is a command-line program that ranks the
+  \u201cbest\u201d stocks to <em>research</em> for a theme (like <em>\u201cbest IT stocks in India\u201d</em>)
+  or a single company. It blends <strong>deterministic financial math</strong> (reproducible, never
+  guesses) with <strong>AI language models</strong> (which explain and add context). The result is a
+  written research report tailored to one of two saved <strong>profiles</strong>: an Indian adult
+  investor, or a German student investor.</p>
+
+  {callout("plain", "&#128172;", "In plain English: \u201cdeterministic\u201d",
+           "<strong>Deterministic</strong> just means \u201cthe same inputs always give the same answer &mdash; "
+           "no randomness, no guessing.\u201d Run it twice with the same data and you get identical numbers. "
+           "FRA even prints a short fingerprint (an <code>input_hash</code>) so you can prove it.")}
+</section>
+
+<!-- ============ PAGE 2: Glossary ============ -->
+<section class="page">
+  <p class="kicker">A friendly dictionary</p>
+  <h1>2 &middot; Visual glossary</h1>
+  <p>Every heavy word in this document is defined here once, in plain language, with a
+  quick everyday comparison. Skim it now, or flip back whenever a term trips you up.</p>
+  {gloss_html}
+  {callout("plain", "&#128172;", "In plain English: \u201cagent,\u201d \u201cpipeline,\u201d \u201corchestrator\u201d",
+           "An <strong>agent</strong> is just one worker that does a single job. A <strong>pipeline</strong> "
+           "is the conveyor belt those workers stand along. The <strong>orchestrator</strong> is the "
+           "floor manager who runs them in the right order and passes the work down the line.")}
+  {callout("warn", "&#8505;&#65039;", "A note on \u201cMCP\u201d",
+           "You may see <strong>MCP (Model Context Protocol)</strong> mentioned in the code &mdash; a standard "
+           "way for AI tools to call outside data. It is <em>not</em> wired into FRA today; the shipped version "
+           "talks to free sources (yfinance / Stooq) directly. It's noted only as a possible future swap.")}
+</section>
+
+<!-- ============ PAGE 3: Architecture ============ -->
+<section class="page">
+  <p class="kicker">The big picture</p>
+  <h1>3 &middot; How the pieces fit together</h1>
+  <p>FRA is a <strong>chain of helpers</strong>. Your typed question enters on the left and flows
+  through each stage, getting richer at every step, until it becomes a report. A single shared
+  \u201cclipboard\u201d (called the <code>AgentState</code>) travels the whole way, collecting results.</p>
+
+  <figure>
+    {ARCH_SVG}
+    <figcaption>Figure 1 &middot; Your command enters through the front desk and conveyor belt, runs
+    down the pipeline of helpers, and exits as files. Free data, an AI provider and your settings
+    feed in from the side.</figcaption>
+  </figure>
+
+  <h3>Three layers, in plain terms</h3>
+  <div class="layer-grid">
+    <div class="layer l1"><h4>1 &middot; Get data</h4><p>Fetch numbers &amp; news from free
+      sources and cache them on disk. <em>(src/data/)</em></p></div>
+    <div class="layer l2"><h4>2 &middot; Think</h4><p>Deterministic math scores companies; AI
+      interprets and debates. <em>(src/factors/, src/agents/)</em></p></div>
+    <div class="layer l3"><h4>3 &middot; Write it down</h4><p>Produce the Markdown / Excel report
+      and log the run. <em>(src/report/, src/memory/)</em></p></div>
+  </div>
+
+  {callout("tip", "&#10003;", "The whole thing in one line (from the README)",
+           "<code>Universe &rarr; DataProvider &rarr; FactorEngine &rarr; Analysts &rarr; "
+           "Bull/Bear Debate &rarr; Risk+Profile &rarr; Manager &rarr; Report</code>")}
+</section>
+
+<!-- ============ PAGE 4-5: Workflow ============ -->
+<section class="page">
+  <p class="kicker">The journey, step by step</p>
+  <h1>4 &middot; The 9 stages, start to finish</h1>
+  <p>The orchestrator runs the stages below in order. After the calculator robot finishes, there's
+  one fork in the road &mdash; if you asked for no AI (or nothing made the shortlist), it takes a
+  shortcut straight to the manager.</p>
+
+  <figure>
+    {FLOW_SVG}
+    <figcaption>Figure 2 &middot; The stage-by-stage flow, including the one decision point that
+    chooses between the full AI path and the fast math-only shortcut.</figcaption>
+  </figure>
+
+  {callout("warn", "&#9888;", "The one fork in the road: \u201cUse AI?\u201d",
+           "Right after Stage 2, FRA asks <code>should_run_llm</code>. If you passed <code>--no-llm</code>, "
+           "<strong>or</strong> nothing made the shortlist, it <strong>skips Stages 3&ndash;4</strong> and jumps "
+           "straight to the manager using math only &mdash; then risk, report, memory. You still get a complete report.")}
+
+  {stages_html}
+</section>
+
+<!-- ============ PAGE 6: Inputs & Outputs ============ -->
+<section class="page">
+  <p class="kicker">What goes in, what comes out</p>
+  <h1>5 &middot; Inputs &amp; outputs</h1>
+  <h3>What you provide</h3>
+  <table>
+    <tr><th>Option</th><th>What it means</th></tr>
+    <tr><td><code>--profile</code> <em>(required)</em></td><td><code>india_adult</code> or <code>germany_student</code></td></tr>
+    <tr><td><code>--target</code> <em>(required)</em></td><td>a ticker (<code>SAP.DE</code>) or a theme (\u201cbest IT stocks in India\u201d)</td></tr>
+    <tr><td><code>--top</code></td><td>how many picks to return (default 10)</td></tr>
+    <tr><td><code>--universe</code> / <code>--domain</code></td><td>narrow the candidate pool</td></tr>
+    <tr><td><code>--rounds</code></td><td>number of Bull-vs-Bear debate rounds (default 1)</td></tr>
+    <tr><td><code>--no-llm</code></td><td>deterministic, AI-free run</td></tr>
+    <tr><td><code>--no-excel</code></td><td>skip the Excel workbook</td></tr>
+    <tr><td><code>--as-of YYYY-MM-DD</code></td><td>evaluate as of a past date</td></tr>
+  </table>
+
+  <h3>What you get back</h3>
+  <ul>
+    <li>A <strong>Markdown report</strong> in <code>reports/</code> and (optionally) an <strong>Excel workbook</strong>.</li>
+    <li>A <strong>console summary</strong>: a \u201cTop picks\u201d table and a data-health line.</li>
+    <li>A <strong>history entry</strong> you can later list with <code>python -m src.cli history</code>.</li>
+  </ul>
+
+  {callout("plain", "&#128196;", "What's inside the report (a real example)",
+           "A header (target, universe, top-N, fingerprint hash) and the disclaimer; a "
+           "<strong>data health card</strong> (e.g. <em>OK, 6/6 tickers fetched, 82% coverage</em>); factor "
+           "warnings; the <strong>final picks</strong> (each with score, coverage, confidence, suggested horizon, "
+           "after-tax estimate, a short thesis, risks and tax notes); a factor-breakdown table; the analyst "
+           "signals; the Bull-vs-Bear transcript; risk &amp; tax notes; and a methodology section.")}
+</section>
+
+<!-- ============ PAGE 7: Setup ============ -->
+<section class="page">
+  <p class="kicker">Getting it running</p>
+  <h1>6 &middot; Configuration &amp; setup</h1>
+  <h3>Install &amp; run (Windows / PowerShell)</h3>
+<pre><span class="cm"># set up a clean environment and install dependencies</span>
+python -m venv .venv && .venv\\Scripts\\activate
+pip install -r requirements.txt
+copy .env.example .env
+
+<span class="cm"># (optional) a local, free AI:</span>
+ollama pull llama3.1:8b
+ollama serve
+
+<span class="cm"># run a research pass:</span>
+python -m src.cli research --profile india_adult --target "best IT stocks in India" --top 10
+
+<span class="cm"># offline / deterministic (no AI):</span>
+python -m src.cli research --profile india_adult --target "best banks in India" --top 10 --no-llm</pre>
+
+  <h3>Settings that live in <code>.env</code></h3>
+  <table>
+    <tr><th>Variable</th><th>Purpose</th><th>Default</th></tr>
+    <tr><td><code>LLM_PROVIDER</code></td><td>openai, anthropic, ollama, or cursor_io</td><td><code>ollama</code></td></tr>
+    <tr><td><code>LLM_MODEL</code></td><td>provider-specific model name</td><td><code>llama3.1:8b</code></td></tr>
+    <tr><td><code>LLM_TEMPERATURE</code></td><td>randomness (0 = deterministic)</td><td><code>0</code></td></tr>
+    <tr><td><code>OPENAI_API_KEY</code> / <code>ANTHROPIC_API_KEY</code></td><td>keys for hosted AIs</td><td>empty</td></tr>
+    <tr><td><code>OLLAMA_HOST</code></td><td>local Ollama endpoint</td><td><code>http://localhost:11434</code></td></tr>
+    <tr><td><code>FRA_CACHE_DIR</code></td><td>where data is cached</td><td><code>./.fra_cache</code></td></tr>
+  </table>
+
+  {callout("tip", "&#10003;", "No API key? It still runs.",
+           "If no AI is reachable, FRA quietly swaps in a deterministic <strong>stub</strong> and every analyst "
+           "falls back to its math rule. You still get a valid, factor-based report &mdash; just with sparser AI prose.")}
+
+  {callout("plain", "&#9881;&#65039;", "In plain English: \u201cconfig-as-data\u201d",
+           "The two profile files in <code>config/profiles/</code> hold the factor weights, tax rules, risk limits "
+           "and currency. So most behaviour can be changed by editing a <strong>settings file</strong>, with no "
+           "Python edits: <code>india_adult.yaml</code> (INR, NIFTY, momentum-tilted) and "
+           "<code>germany_student.yaml</code> (EUR, DAX/MDAX, lower-risk).")}
+</section>
+
+<!-- ============ PAGE 8: Walkthrough + Extend ============ -->
+<section class="page">
+  <p class="kicker">One real request, traced</p>
+  <h1>7 &middot; A worked example</h1>
+  <p>Running <code>research --profile india_adult --target "best IT companies in India" --top 10</code>:</p>
+  <ol class="steps">
+    <li><strong>Front desk</strong> loads the India profile, builds the clipboard, prints a banner.</li>
+    <li><strong>Librarian</strong> spots \u201cIT\u201d &rarr; Information Technology, and lists TCS, Infosys, Tech Mahindra, Wipro, HCLTech, LTIMindtree.</li>
+    <li><strong>Calculator</strong> fetches each snapshot (data health: <em>OK, 6/6 fetched, 82% coverage</em>) and scores them; fingerprint <code>1aceed39273729da</code>.</li>
+    <li><strong>Analysts</strong> weigh in &mdash; e.g. TCS looks strong on fundamentals (ROE 48.4%) but weak on momentum (&minus;31.9%); every claim cites a real number.</li>
+    <li><strong>Debate</strong>: Bull says \u201cworld-class franchises after a reset\u201d; Bear says \u201cthe cycle is still rolling over.\u201d</li>
+    <li><strong>Risk + tax</strong> adds a 10% per-name cap and Indian capital-gains notes.</li>
+    <li><strong>Manager</strong> ranks them (TCS #1, Infosys #2&hellip;), each with a thesis and after-tax estimate. One name had 0% data, so it's flagged low-confidence &mdash; graceful degradation in action.</li>
+    <li><strong>Report + memory</strong> save the file and log the run.</li>
+  </ol>
+
+  <h2>8 &middot; Want to change something?</h2>
+  <table>
+    <tr><th>You want to&hellip;</th><th>Edit this</th></tr>
+    <tr><td>Add a new investor profile</td><td>Add a YAML in <code>config/profiles/</code> (copy an existing one)</td></tr>
+    <tr><td>Change weights / tax / risk limits</td><td>Edit the relevant <code>config/profiles/*.yaml</code> &mdash; no code change</td></tr>
+    <tr><td>Add or change a factor</td><td>Add an extractor in <code>src/factors/metrics.py</code></td></tr>
+    <tr><td>Swap the data source</td><td>Re-implement <code>DataProvider</code> in <code>src/data/provider.py</code></td></tr>
+    <tr><td>Add a new analyst</td><td>New module in <code>src/agents/</code>, then wire it into the orchestrator</td></tr>
+    <tr><td>Change the report layout</td><td>Edit <code>src/report/templates/report.md.j2</code></td></tr>
+    <tr><td>Use a different / no AI</td><td>Set <code>LLM_PROVIDER</code>, or pass <code>--no-llm</code></td></tr>
+  </table>
+
+  <p class="footernote"><strong>File map:</strong> <code>src/cli.py</code> (entry) &middot;
+  <code>src/graph/orchestrator.py</code> (pipeline) &middot; <code>src/graph/state.py</code> (shared clipboard) &middot;
+  <code>src/agents/*</code> (workers) &middot; <code>src/factors/*</code> (math) &middot;
+  <code>src/data/*</code> (data + caching) &middot; <code>src/report/*</code> (output) &middot;
+  <code>src/memory/store.py</code> (history) &middot; <code>config/profiles/*.yaml</code> (settings).</p>
+</section>
+
+</body></html>
+"""
+
+
+def render_pdf(html_path, pdf_path):
+    """Render the HTML to PDF via Playwright (headless Chromium)."""
+    from playwright.sync_api import sync_playwright
+    url = "file:///" + html_path.replace(os.sep, "/")
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page()
+        page.goto(url, wait_until="networkidle")
+        page.emulate_media(media="print")
+        page.pdf(
+            path=pdf_path, format="A4", print_background=True,
+            margin={"top": "12mm", "bottom": "14mm", "left": "10mm", "right": "10mm"},
+            display_header_footer=True,
+            header_template="<div></div>",
+            footer_template=(
+                '<div style="width:100%;font-family:Inter,sans-serif;font-size:8px;'
+                'color:#5a7480;padding:0 12mm;display:flex;justify-content:space-between;">'
+                '<span>Finance Research Agent &middot; How It Works</span>'
+                '<span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span></div>'),
+        )
+        browser.close()
+
+
+def main():
+    html = build_html()
+    with open(HTML_PATH, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"Wrote {HTML_PATH} ({os.path.getsize(HTML_PATH)/1024:.1f} KB)")
+    try:
+        render_pdf(HTML_PATH, PDF_PATH)
+        print(f"Wrote {PDF_PATH} ({os.path.getsize(PDF_PATH)/1024:.1f} KB)")
+    except Exception as exc:  # pragma: no cover - environment dependent
+        print(f"[notice] PDF step skipped: {exc!r}")
+        print("         The self-contained HTML still prints cleanly to PDF from any browser.")
+
+
+if __name__ == "__main__":
+    main()

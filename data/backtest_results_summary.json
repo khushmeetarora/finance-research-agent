@@ -1,0 +1,46 @@
+{
+  "multibaggers": {
+    "panel_A_strict_PIT": {
+      "n": 26,
+      "determinate": 0,
+      "indeterminate": 26,
+      "indeterminate_rate": 1.0,
+      "hits": 0,
+      "rate_among_determinate": null
+    },
+    "panel_B_latest_vintage": {
+      "n": 26,
+      "determinate": 26,
+      "indeterminate": 0,
+      "indeterminate_rate": 0.0,
+      "hits": 19,
+      "rate_among_determinate": 0.731
+    }
+  },
+  "destroyers": {
+    "panel_A_strict_PIT": {
+      "n": 16,
+      "determinate": 7,
+      "indeterminate": 9,
+      "indeterminate_rate": 0.562,
+      "hits": 7,
+      "rate_among_determinate": 1.0
+    },
+    "panel_B_latest_vintage": {
+      "n": 16,
+      "determinate": 14,
+      "indeterminate": 2,
+      "indeterminate_rate": 0.125,
+      "hits": 13,
+      "rate_among_determinate": 0.929
+    }
+  },
+  "veto_attribution_destroyers": {
+    "RF7": 12,
+    "RF4": 3,
+    "RF2": 1,
+    "RF3": 2,
+    "RF6": 2,
+    "RF5": 1
+  }
+}

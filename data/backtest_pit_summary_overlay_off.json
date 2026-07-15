@@ -1,0 +1,127 @@
+{
+  "n_total": 173,
+  "counts_by_label": {
+    "intermediate": 20,
+    "multibagger": 31,
+    "multibagger_strong": 63,
+    "non_multibagger": 59
+  },
+  "determinacy": {
+    "determinate_screener": 51,
+    "indeterminate_screener": 122,
+    "determinate_rate": 0.295,
+    "determinate_yfinance_baseline": 0,
+    "rescued_by_screener": 51,
+    "note": "screener.in rescued names into PIT-determinacy that yfinance's ~4-5y window could not; determinacy is bounded to ~entry-year >=2017 because screener free depth reaches ~FY2015 for March-end filers."
+  },
+  "separation_on_determinate": {
+    "n_determinate": 51,
+    "n_winners_determinate": 32,
+    "curated_base_rate": 0.627,
+    "screen_precision": 0.737,
+    "screen_recall": 0.438,
+    "lift_over_base_rate": 1.18,
+    "flagged": 19,
+    "flagged_winners": 14,
+    "control_rejection_rate": 0.737,
+    "n_controls_determinate": 19
+  },
+  "composite_quintile_hit_rates": [
+    {
+      "quantile_from_top": 1,
+      "n": 5,
+      "winners": 4,
+      "hit_rate": 0.8,
+      "composite_range": [
+        0.598,
+        0.661
+      ]
+    },
+    {
+      "quantile_from_top": 2,
+      "n": 5,
+      "winners": 4,
+      "hit_rate": 0.8,
+      "composite_range": [
+        0.56,
+        0.595
+      ]
+    },
+    {
+      "quantile_from_top": 3,
+      "n": 5,
+      "winners": 5,
+      "hit_rate": 1.0,
+      "composite_range": [
+        0.52,
+        0.554
+      ]
+    },
+    {
+      "quantile_from_top": 4,
+      "n": 5,
+      "winners": 5,
+      "hit_rate": 1.0,
+      "composite_range": [
+        0.485,
+        0.513
+      ]
+    },
+    {
+      "quantile_from_top": 5,
+      "n": 5,
+      "winners": 3,
+      "hit_rate": 0.6,
+      "composite_range": [
+        0.405,
+        0.482
+      ]
+    },
+    {
+      "quantile_from_top": 6,
+      "n": 3,
+      "winners": 2,
+      "hit_rate": 0.667,
+      "composite_range": [
+        0.183,
+        0.357
+      ]
+    }
+  ],
+  "veto_attribution_determinate": {
+    "RF1": {
+      "losers": 2,
+      "winners": 3
+    },
+    "RF2": {
+      "losers": 6,
+      "winners": 6
+    },
+    "RF4": {
+      "losers": 2,
+      "winners": 0
+    },
+    "RF5": {
+      "losers": 1,
+      "winners": 0
+    },
+    "RF6": {
+      "losers": 1,
+      "winners": 0
+    },
+    "RF7": {
+      "losers": 2,
+      "winners": 0
+    },
+    "RF8": {
+      "losers": 3,
+      "winners": 4
+    }
+  },
+  "caveats": [
+    "Hindsight-selected, survivorship-affected dataset: the base rate is NOT a market base rate; precision/lift are curated-set diagnostics.",
+    "screener statements are restated (latest-vintage), not as-first-reported: a restated-vintage upper bound even after the 90-day reporting-lag gate.",
+    "PIT peer panel = same-year dataset cohort (free data lacks true historical small/mid-cap index membership).",
+    "Do NOT convert recall/precision here into a forward probability."
+  ]
+}

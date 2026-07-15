@@ -1,0 +1,85 @@
+# FRA V2 - Macro / Regime overlay configuration (NEW, additive).
+#
+# Every series below is FREE and requires NO API key:
+#   * FRED  -> https://fred.stlouisfed.org/graph/fredgraph.csv?id=<ID>  (no-key CSV)
+#   * Yahoo -> yfinance daily history (already a repo dependency)
+#
+# `publication_lag_days` is the crux of point-in-time (PIT) correctness: a data
+# point stamped with period-end date D only becomes *knowable* on D + lag. The
+# regime layer therefore keeps a point only when (D + publication_lag_days) <=
+# as_of, so a historical run can never see a print before it was released.
+#
+# This file is read by src/data/macro_signals.py. If it is missing, the module
+# falls back to the built-in DEFAULTS (kept in sync with this file), so the
+# overlay degrades gracefully rather than crashing.
+
+# --- FRED free no-key CSV series -------------------------------------------
+fred:
+  india_repo_rate:
+    id: INTDSRINM193N          # India policy/discount rate (monthly)
+    publication_lag_days: 7    # RBI MPC decision published ~same week
+    description: "RBI policy/discount rate proxy (FRED, monthly)"
+  india_cpi:
+    id: INDCPIALLMINMEI        # India CPI all items index (monthly)
+    publication_lag_days: 21   # CPI released ~12th of the following month
+    description: "India CPI all-items index (FRED/OECD, monthly)"
+  us_10y:
+    id: DGS10                  # US 10Y Treasury constant-maturity yield (daily)
+    publication_lag_days: 1
+    description: "US 10Y yield - global rate-impulse / risk proxy (FRED, daily)"
+  us_2y:
+    id: DGS2                   # US 2Y - for a 10y-2y curve slope proxy
+    publication_lag_days: 1
+    description: "US 2Y yield - curve-slope proxy (FRED, daily)"
+  baa_spread:
+    id: BAA10Y                 # Moody's BAA - 10Y Treasury spread (credit risk)
+    publication_lag_days: 1
+    description: "BAA-10Y credit spread - risk-appetite / credit proxy (FRED, daily)"
+
+# --- Yahoo Finance (yfinance) daily series ---------------------------------
+yahoo:
+  crude_brent:
+    ticker: "BZ=F"
+    publication_lag_days: 0
+    description: "Brent crude continuous future"
+  crude_wti:
+    ticker: "CL=F"
+    publication_lag_days: 0
+    description: "WTI crude continuous future (fallback for Brent)"
+  usdinr:
+    ticker: "INR=X"
+    publication_lag_days: 0
+    description: "USD/INR spot (rising = INR depreciation)"
+  india_vix:
+    ticker: "^INDIAVIX"
+    publication_lag_days: 0
+    description: "India VIX - risk regime"
+  nifty:
+    ticker: "^NSEI"
+    publication_lag_days: 0
+    description: "Nifty 50 - broad-market trend"
+  nifty_bank:
+    ticker: "^NSEBANK"
+    publication_lag_days: 0
+    description: "Nifty Bank - financials/credit-cycle sector proxy"
+
+# --- Classification thresholds (documented, overridable) -------------------
+thresholds:
+  rate_move_points: 0.25       # >|0.25| pp move over the window = easing/tightening
+  cpi_band: 0.06               # RBI upper tolerance band = 6% YoY
+  crude_spike_mom: 0.10        # >+10% over the crude window = spike
+  inr_depreciation_mom: 0.02   # >+2% USD/INR over the window = depreciation
+  fx_stress_vol: 0.08          # annualised USD/INR vol above this = FX stress
+  vix_riskoff_pct: 0.80        # VIX percentile above this = risk-off
+  vix_riskon_pct: 0.30         # VIX percentile below this = risk-on
+
+# --- Lookback windows (calendar days unless noted) -------------------------
+lookbacks:
+  rate_delta_days: 365
+  cpi_yoy_days: 365
+  cpi_short_days: 120
+  crude_momentum_days: 20
+  inr_momentum_days: 20
+  vol_window_points: 20        # trading-day count for annualised vol
+  vix_percentile_days: 504     # ~2 trading years
+  nifty_trend_days: 252        # ~1 trading year

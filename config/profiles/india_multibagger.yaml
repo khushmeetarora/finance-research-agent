@@ -1,0 +1,90 @@
+# India - Multibagger Quality Score (V2 variant).
+#
+# Additive scoring variant implementing docs/FRA_V2_STRATEGY.md: a 7-pillar
+# "Multibagger Quality Score" with sector-relative normalisation and a hard
+# red-flag veto pass. Tax / locale reused from india_adult (FY 2025-26 rates).
+# The classic 5-factor profiles are unaffected.
+
+profile_id: india_multibagger
+display_name: "India - Multibagger Quality Score (V2)"
+country: IN
+currency: INR
+locale: en_IN
+
+# Selects the 7-pillar pillar engine + veto pass in src/agents/quant.py.
+scoring_mode: multibagger
+
+universe:
+  default: NIFTY500
+  available: [NIFTY50, NIFTY500, BSE500, GLOBAL_LARGE]
+  yahoo_suffix: ".NS"        # default suffix for NSE tickers on yfinance
+  alt_yahoo_suffix: ".BO"    # BSE fallback
+
+# 7-pillar weights (spec section 4). Normalised to sum 1 by the engine.
+pillar_weights:
+  profitability: 0.22
+  earnings_quality: 0.18
+  balance_sheet_safety: 0.15
+  growth_valuation: 0.15
+  moat_pricing_power: 0.12
+  promoter_governance: 0.10
+  rerating_catalysts: 0.08
+
+# Kept for backward-compat / any classic-path fallback; ignored in multibagger
+# mode where pillar_weights drives the composite.
+factor_weights:
+  quality: 0.30
+  value: 0.25
+  momentum: 0.20
+  financial_health: 0.15
+  earnings_quality: 0.10
+
+factor_config:
+  # Sector-relative percentile ranking is the multibagger default (spec sec 5).
+  sector_relative: true
+  min_sector_peers: 6
+  # Up-weight ROCE consistency + safety for cyclical targets when true.
+  cyclical_mode: false
+  # A snapshot with 0% coverage still gets this much weight (penalises sparse
+  # statement data - important given yfinance's shallow history).
+  coverage_weight_floor: 0.4
+  per_factor_floor: 0.20
+
+# Tier-C manual overrides (NEVER fabricated). Per-ticker governance inputs the
+# free data sources cannot provide; default absent => governance pillar neutral.
+# Example:
+# manual_inputs:
+#   SOMESTOCK.NS:
+#     promoter_pledge_pct: 62      # -> triggers RF6 veto (> 50%)
+#     auditor_red_flag: true       # -> triggers RF7 veto
+#     promoter_holding_trend: 0.03 # positive = promoters buying
+manual_inputs: {}
+
+# Simple after-tax return estimator (used for the Picks sheet).
+return_model:
+  base_annual_return: 0.10
+  composite_to_return_slope: 0.04
+  transaction_cost_bps: 15
+
+risk_constraints:
+  min_market_cap_inr_crore: 1000     # small-mid cap floor (multibaggers live here)
+  max_single_position_pct: 0.10
+  prefer_etf: false
+  max_volatility_annualized: 0.60
+
+tax:
+  short_term_threshold_days: 365
+  short_term_rate: 0.20                       # STCG flat 20% (Section 111A)
+  long_term_rate: 0.125                       # LTCG 12.5% above exemption (Section 112A)
+  long_term_annual_exemption_inr: 125000      # Rs 1.25 lakh / FY
+  prefer_long_term_holding: true
+  notes:
+    - "Rates apply to transfers on/after 23 July 2024."
+    - "Cess of 4% applies on tax computed."
+    - "Carry-forward: short-term losses 8 years; LTCG losses only offset LTCG."
+
+llm:
+  prompt_locale_hints:
+    - "User invests from India; quote prices in INR (Rs / lakh / crore)."
+    - "Reference NSE/BSE conventions (e.g. INFY for Infosys, RELIANCE for Reliance)."
+    - "This is a MULTIBAGGER-quality screen: emphasise consistency of ROCE/FCF, earnings quality (cash-backed profits), balance-sheet safety, and honest valuation (PEG within sector). Never treat a single peak-year metric as a buy signal."

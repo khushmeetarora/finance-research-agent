@@ -1,0 +1,67 @@
+# Germany - student investor.
+# Lower-risk lean (quality large caps + ETFs), Abgeltungssteuer awareness.
+# Rates current as of 2026; update annually in YAML.
+
+profile_id: germany_student
+display_name: "Germany - Student"
+country: DE
+currency: EUR
+locale: de_DE
+
+universe:
+  default: DAX_PLUS_MDAX
+  available: [DAX, DAX_PLUS_MDAX, EURO_STOXX_50, GLOBAL_LARGE]
+  yahoo_suffix: ".DE"        # Xetra
+  alt_yahoo_suffix: ".F"     # Frankfurt fallback
+
+factor_weights:
+  # Student lean: emphasize Quality + Financial Health, de-emphasize Momentum.
+  quality: 0.35
+  value: 0.20
+  momentum: 0.15
+  financial_health: 0.20
+  earnings_quality: 0.10
+
+factor_config:
+  per_factor_floor: 0.25       # tighter floor for a student profile
+  coverage_weight_floor: 0.5   # heavier penalty on sparse data
+  orthogonalize_eq: false
+
+# Simple after-tax return estimator.
+return_model:
+  base_annual_return: 0.07     # more conservative than India
+  composite_to_return_slope: 0.03
+  transaction_cost_bps: 20     # neobroker round-trip + spread
+
+# Teilfreistellung: 30% of equity-fund/ETF gains are tax-exempt under InvStG.
+# Single stocks do not benefit. We expose the rate so the after-tax model can
+# apply it for ETFs. The current pipeline does not auto-classify ETFs vs
+# stocks; if you set is_etf=true on a profile pick (future feature) the
+# discount applies.
+etf_teilfreistellung_pct: 0.30
+
+risk_constraints:
+  min_market_cap_eur_million: 2000      # large-cap floor for safety
+  max_single_position_pct: 0.05         # tighter concentration for a student
+  prefer_etf: true                      # surface ETFs alongside single names
+  max_volatility_annualized: 0.40
+
+tax:
+  # Abgeltungssteuer: flat, no holding-period distinction for stocks/ETFs.
+  short_term_threshold_days: 0          # no STCG/LTCG split
+  short_term_rate: 0.26375              # 25% + 5.5% Soli
+  long_term_rate: 0.26375
+  long_term_annual_exemption_eur: 1000  # Sparerpauschbetrag (single)
+  prefer_long_term_holding: false
+  notes:
+    - "Sparerpauschbetrag 1,000 EUR/yr (single) covers ALL capital income; set up Freistellungsauftrag with broker."
+    - "Guenstigerpruefung (Anlage KAP): if personal income tax rate < 25%, request lower-rate assessment."
+    - "NV-Bescheinigung: if total annual income (incl. capital gains) is below the Grundfreibetrag, file for a Nichtveranlagungsbescheinigung to receive gross."
+    - "Church tax (Kirchensteuer 8-9%) optional, only for church members."
+    - "Foreign withholding tax: prefer dividend sources with creditable Quellensteuer (e.g. UK 0%, US 15%)."
+
+llm:
+  prompt_locale_hints:
+    - "User invests from Germany as a student with a small budget."
+    - "Quote prices in EUR; reference Xetra tickers (e.g. SAP.DE, ALV.DE)."
+    - "Lean toward ETFs and quality large caps; flag suitability for a beginner with limited capital."

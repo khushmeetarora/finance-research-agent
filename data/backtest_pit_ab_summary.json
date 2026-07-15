@@ -1,0 +1,36 @@
+{
+  "determinacy_unchanged": true,
+  "verdict_changes_off_to_on": 0,
+  "composite_changes_off_to_on": 119,
+  "separation_off": {
+    "base_rate": 0.627,
+    "precision": 0.737,
+    "recall": 0.438,
+    "lift": 1.18,
+    "control_rejection": 0.737
+  },
+  "separation_on": {
+    "base_rate": 0.627,
+    "precision": 0.737,
+    "recall": 0.438,
+    "lift": 1.18,
+    "control_rejection": 0.737
+  },
+  "quintile_hit_rates_off": [
+    0.8,
+    0.8,
+    1.0,
+    1.0,
+    0.6,
+    0.667
+  ],
+  "quintile_hit_rates_on": [
+    0.8,
+    0.8,
+    1.0,
+    1.0,
+    0.6,
+    0.667
+  ],
+  "note": "The screen VERDICT (PASS/FAIL) is a veto + absolute-quality-gate decision that does NOT read the composite, and the overlay is context/tilt only (never a veto), so base-rate / precision / recall / lift / control-rejection are unchanged BY DESIGN. The overlay can only move the composite-based quintile ordering (and add advisory regime context). Honest read: on this tiny determinate sample the overlay does not change any verdict; treat quintile shifts as noise at n<=51, not evidence of edge."
+}

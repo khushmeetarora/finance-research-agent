@@ -1,0 +1,140 @@
+# Finance Research Agent - {{ profile_display }}
+
+**Generated:** {{ generated_at }}
+**Target:** {{ target }}
+**Universe:** {{ universe_name or "(profile default)" }} ({{ candidate_count }} candidates considered)
+**Top N:** {{ top_n }}
+{% if as_of %}**As-of:** {{ as_of }}
+{% endif %}{% if input_hash %}**Input hash:** `{{ input_hash }}`
+{% endif %}
+> Disclaimer: educational/research output. Not financial advice. No real
+> orders are placed. All data is from public free sources and may be stale or
+> incomplete. Verify before acting.
+
+{% if data_health %}
+## Data health: **{{ data_health.severity | upper }}**
+
+- Tickers fetched: **{{ data_health.fetched }} / {{ data_health.requested }}** ({{ data_health.failed }} failed)
+- Average data coverage: **{{ "%.0f" | format(data_health.avg_coverage * 100) }}%**
+- Cross-source price agreement: **{% if data_health.avg_agreement is not none %}{{ "%.0f" | format(data_health.avg_agreement * 100) }}%{% else %}n/a (single source){% endif %}**
+- Sources used: {{ ", ".join(data_health.sources_used or []) or "(none)" }}
+{% if data_health.dropouts %}- Dropouts: {{ ", ".join(data_health.dropouts[:10]) }}{% if data_health.dropouts | length > 10 %} ...{% endif %}
+{% endif %}{% if data_health.low_agreement %}- Low-agreement tickers: {% for t, a in data_health.low_agreement[:5] %}{{ t }}={{ "%.0f" | format(a*100) }}% {% endfor %}
+{% endif %}
+{% for m in data_health.messages %}> {{ m }}
+{% endfor %}
+{% endif %}
+
+{% if factor_regime and factor_regime.regime_warnings %}
+## Factor regime warnings
+
+{% for w in factor_regime.regime_warnings %}- {{ w }}
+{% endfor %}
+{% endif %}
+
+---
+
+## Final Picks
+
+{% for pick in picks %}
+### {{ pick.rank }}. {{ pick.name or pick.ticker }} (`{{ pick.ticker }}`){% if pick.is_cross_currency %} <small>FX</small>{% endif %}
+
+- **Composite score:** {{ "%.2f" | format(pick.composite_score) if pick.composite_score is not none else "n/a" }}
+- **Profile fit:** {{ "%.2f" | format(pick.profile_fit) if pick.profile_fit is not none else "n/a" }} (cosine similarity vs profile factor weights)
+- **Data coverage:** {% if pick.coverage is not none %}{{ "%.0f" | format(pick.coverage * 100) }}%{% else %}n/a{% endif %}
+- **Factor std-dev:** {{ "%.2f" | format(pick.factor_std_dev) if pick.factor_std_dev is not none else "n/a" }} (lower = more balanced across factors)
+- **Confidence:** {{ "%.2f" | format(pick.confidence) }}
+- **Suggested horizon:** {{ pick.suggested_horizon or "n/a" }}{% if pick.expected_after_tax_return is not none %}
+- **Estimated after-tax return:** {{ "%+.1f" | format(pick.expected_after_tax_return * 100) }}% (gross {{ "%+.1f" | format(pick.expected_gross_return * 100) }}%) - assumes the profile-defined base rate, see Methodology.{% endif %}
+
+**Thesis.** {{ pick.thesis or "(none)" }}
+
+**Key risks.**
+{% if pick.key_risks %}{% for r in pick.key_risks %}- {{ r }}
+{% endfor %}{% else %}- (none documented)
+{% endif %}
+**Tax / profile notes.**
+{% if pick.tax_notes %}{% for n in pick.tax_notes %}- {{ n }}
+{% endfor %}{% else %}- (none){% endif %}
+
+{% endfor %}
+
+---
+
+{% if scoring_mode == "multibagger" %}
+## Multibagger scorecard (top {{ top_n }})
+
+Seven-pillar Multibagger Quality Score (sector-relative percentile ranks). Pillars: **Prof**=Profitability & Efficiency, **EarnQ**=Earnings Quality & Cash, **Safety**=Balance-Sheet Safety, **G&V**=Growth & Valuation/PEG, **Moat**=Moat & Pricing Power, **Gov**=Promoter/Governance (0.5 = neutral when Tier-C data absent), **Cat**=Re-rating Catalysts.
+
+| Rank | Ticker | Name | Composite | Prof | EarnQ | Safety | G&V | Moat | Gov | Cat |
+| ---: | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+{% for r in multibagger_scorecard %}| {{ loop.index }} | `{{ r.ticker }}` | {{ r.name or "" }} | {{ fmt(r.composite_score) }} | {{ fmt(r.pillar_scores.profitability) }} | {{ fmt(r.pillar_scores.earnings_quality) }} | {{ fmt(r.pillar_scores.balance_sheet_safety) }} | {{ fmt(r.pillar_scores.growth_valuation) }} | {{ fmt(r.pillar_scores.moat_pricing_power) }} | {{ fmt(r.pillar_scores.promoter_governance) }} | {{ fmt(r.pillar_scores.rerating_catalysts) }} |
+{% endfor %}
+
+### Consistency stats & red flags
+
+{% for r in multibagger_scorecard %}- **`{{ r.ticker }}`** {{ r.name or "" }}: ROCE mean {{ fmt(r.consistency_stats.roce_mean) }} (min {{ fmt(r.consistency_stats.roce_min) }}, cv {{ fmt(r.consistency_stats.roce_cv) }}), FCF+ rate {{ fmt(r.consistency_stats.fcf_posrate) }}, Beneish M {{ fmt(r.consistency_stats.beneish_m) }}, Altman Z" {{ fmt(r.consistency_stats.altman_z) }}{% if r.vetoes %} - **VETOED:** {{ ", ".join(r.vetoes) }}{% endif %}{% if r.soft_flags %} - _soft:_ {{ ", ".join(r.soft_flags) }}{% endif %}
+{% endfor %}
+
+> **Tier-C manual checklist** (never auto-fetched from free sources; supply via the profile's `manual_inputs`): promoter pledge %, related-party transactions, auditor changes, order-book/policy catalysts. Absent => the Promoter/Governance pillar defaults to neutral (0.5) and RF6/RF7 vetoes stay off.
+{% else %}
+## Factor breakdown (top {{ top_n }})
+
+| Rank | Ticker | Name | Composite | Quality | Value | Momentum | Health | Earnings Q. |
+| ---: | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+{% for r in factor_table %}| {{ loop.index }} | `{{ r.ticker }}` | {{ r.name or "" }} | {{ fmt(r.composite_score) }} | {{ fmt(r.factor_scores.quality) }} | {{ fmt(r.factor_scores.value) }} | {{ fmt(r.factor_scores.momentum) }} | {{ fmt(r.factor_scores.financial_health) }} | {{ fmt(r.factor_scores.earnings_quality) }} |
+{% endfor %}
+{% endif %}
+
+## Analyst signals
+
+{% for sig in analyst_signals %}- **{{ sig.role }}**{% if sig.ticker %} on `{{ sig.ticker }}`{% endif %}: {{ sig.stance }} (score {{ "%.2f" | format(sig.score) }}, conf {{ "%.2f" | format(sig.confidence) }}) - {{ sig.rationale }}
+{% endfor %}
+
+{% if debate %}
+## Bull vs Bear debate
+{% for turn in debate %}
+**{{ turn.side | upper }} (round {{ turn.round_idx + 1 }})**
+{{ turn.text }}
+
+{% endfor %}
+{% endif %}
+
+## Risk + profile notes
+
+{% for n in risk_notes %}- {{ n }}
+{% endfor %}
+
+## Tax notes ({{ profile_country }})
+
+{% for n in tax_notes %}- {{ n }}
+{% endfor %}
+
+## Methodology
+
+{% if scoring_mode == "multibagger" %}
+- **Scoring mode:** Multibagger Quality Score (7 pillars).
+- **Pillar weights** ({{ profile_id }}): {{ pillar_weights }}
+- Pillar scores are computed deterministically from yfinance `.info` (Tier-A)
+  and annual income/balance/cash-flow statements (Tier-B), **percentile-ranked
+  within GICS sector** (fallback to whole universe when peers < 6), then
+  coverage-shrunk toward the median. A hard **red-flag veto pass** (structural
+  cash burn, earnings-not-cash-backed, Beneish M > -1.78, Altman Z" < 1.1,
+  insolvency-risk debt, promoter pledge, auditor flag, perception-only
+  re-rating, working-capital trap) is applied after ranking. Tier-C governance
+  data is never fabricated - it defaults to neutral and is surfaced as a manual
+  checklist. LLM analysts *interpret* the numbers; they never produce them.
+{% else %}
+- **Factor weights** ({{ profile_id }}): {{ factor_weights }}
+- Quality, Value, Momentum, Financial Health, Earnings Quality factors are
+  computed deterministically from yfinance data and percentile-ranked across
+  the candidate universe. LLM analysts then *interpret* the rankings; they do
+  not produce numerical values.
+{% endif %}
+- See README.md for the full architecture.
+
+{% if llm_unavailable %}
+> **Note.** LLM was unavailable or returned empty output - rankings are still
+> valid (factor engine is deterministic), but per-pick theses and the bull/bear
+> debate may be sparse.
+{% endif %}
