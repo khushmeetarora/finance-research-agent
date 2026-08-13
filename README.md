@@ -1,3 +1,14 @@
+Personal multi-agent research CLI. Not a trading bot. Not financial advice. Not client/NDA code.
+
+Deterministic scoring first. LLM agents reason over those numbers and may not invent values. No LLM? The run still finishes.
+
+```powershell
+python -m src.cli research -p india_adult -t "best IT stocks in India" -n 10 --no-llm
+```
+
+Interesting choice: bounded Bull vs Bear debate, then a Risk/Profile agent applies constraints. Full notes below.
+
+---
 # Finance Research Agent (FRA)
 
 A CLI-first, multi-agent **investment research** workflow that ranks the best
